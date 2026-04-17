@@ -1,1 +1,397 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>مركز الأحمدي للجوالات ومستلزماتها</title>
+  
+  <!-- Tailwind & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Firebase Libraries (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
+  <!-- QRCode Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <!-- ملفات CSS الخاصة بالمشروع -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="h-full" style="background:var(--bg)">
+<div id="app" class="w-full h-full overflow-auto">
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Header -->
+  <header id="mainHeader" class="fixed top-0 left-0 right-0 z-50 glass-heavy" style="border-radius:0 0 24px 24px; border-bottom:1px solid rgba(255,255,255,0.4)">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="https://i.ibb.co/XZxvN2gR/IMG-edit-1123054760450025.png" alt="شعار مركز الأحمدي" class="w-10 h-10 rounded-xl object-contain" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#008080,#006666)';this.alt='الأحمدي';">
+        <span id="headerStoreName" class="font-extrabold text-lg hidden sm:block" style="color:var(--pri-d)">مركز الأحمدي</span>
+      </div>
+      
+      <!-- شريط البحث (جديد) -->
+      <div class="hidden md:flex items-center flex-1 max-w-md mx-4">
+        <div class="relative w-full">
+          <input type="text" id="searchInput" placeholder="ابحث عن منتج..." class="w-full p-2 pr-10 rounded-xl border border-white/30 bg-white/40 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-teal-700"></i>
+        </div>
+      </div>
+      
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="#/" class="nav-link" data-page="home">الرئيسية</a>
+        <a href="#/shop" class="nav-link" data-page="shop">المتجر</a>
+        <a href="#/offers" class="nav-link" data-page="offers">العروض</a>
+        <a href="#/contact" class="nav-link" data-page="contact">اتصل بنا</a>
+        <a href="#/dashboard" id="adminNavLink" class="nav-link flex items-center gap-1 text-sm font-semibold hidden" style="color:var(--pri-d);">
+          <i class="fas fa-cog"></i> لوحة التحكم
+        </a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <div id="authArea" class="auth-buttons"></div>
+        <button onclick="app.navigateTo('cart')" class="relative p-2 rounded-xl hover:bg-white/50 transition">
+          <i class="fas fa-shopping-cart" style="width:22px;height:22px;color:var(--pri-d)"></i>
+          <span id="cartBadge" class="cart-badge" style="display:none">0</span>
+        </button>
+        <button id="mobileMenuBtn" class="md:hidden p-2 rounded-xl hover:bg-white/50 transition" onclick="app.toggleMobileMenu()">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile menu -->
+    <div id="mobileMenu" class="md:hidden hidden px-4 pb-4">
+      <div class="glass p-4 flex flex-col gap-3">
+        <a href="#/" class="nav-link" data-page="home">الرئيسية</a>
+        <a href="#/shop" class="nav-link" data-page="shop">المتجر</a>
+        <a href="#/offers" class="nav-link" data-page="offers">العروض</a>
+        <a href="#/contact" class="nav-link" data-page="contact">اتصل بنا</a>
+        <a href="#/dashboard" id="mobileAdminLink" class="nav-link hidden flex items-center gap-1"><i class="fas fa-cog"></i> لوحة التحكم</a>
+        <!-- شريط بحث للجوال -->
+        <div class="relative mt-2">
+          <input type="text" id="mobileSearchInput" placeholder="ابحث عن منتج..." class="w-full p-2 pr-10 rounded-xl border bg-white/60 text-sm">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-teal-700"></i>
+        </div>
+        <div id="mobileAuthArea" class="flex flex-col gap-2 pt-2 border-t border-slate-200"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ الصفحات ============ -->
+  <!-- HOME -->
+  <div id="page-home" class="page" style="padding-top:70px">
+    <section class="hero-slider-section" id="heroSliderSection">
+      <div class="relative z-10 w-full h-full flex items-center justify-center px-4">
+        <div id="heroSliderContainer" class="w-full max-w-5xl"></div>
+      </div>
+      <button id="sliderPrev" class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/50 transition">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button id="sliderNext" class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/50 transition">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      <div id="sliderDots" class="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-20"></div>
+    </section>
+    
+    <!-- قسم آراء العملاء -->
+    <section class="max-w-7xl mx-auto px-4 py-12">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-black" style="color:var(--pri-d)">🌟 آراء عملائنا</h2>
+        <div class="flex gap-2">
+          <button id="reviewPrevBtn" class="w-10 h-10 rounded-full glass flex items-center justify-center"><i class="fas fa-chevron-right"></i></button>
+          <button id="reviewNextBtn" class="w-10 h-10 rounded-full glass flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
+        </div>
+      </div>
+      <div id="reviewsSliderContainer" class="review-slider-container"></div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 py-12">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-black" style="color:var(--pri-d)">🔥 عروض مميزة</h2>
+        <button onclick="app.navigateTo('offers')" class="text-sm font-bold" style="color:var(--pri)">عرض الكل ←</button>
+      </div>
+      <div id="featuredGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    </section>
+    <section class="max-w-7xl mx-auto px-4 pb-16">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div class="glass p-6 text-center anim-up anim-d1"><div class="text-4xl mb-3"><i class="fas fa-truck"></i></div><h3 class="font-bold text-lg mb-2" style="color:var(--pri-d)">توصيل سريع</h3><p class="text-sm text-slate-500">توصيل لجميع مناطق تعز</p></div>
+        <div class="glass p-6 text-center anim-up anim-d2"><div class="text-4xl mb-3"><i class="fas fa-check-circle"></i></div><h3 class="font-bold text-lg mb-2" style="color:var(--pri-d)">ضمان الجودة</h3><p class="text-sm text-slate-500">منتجات أصلية 100%</p></div>
+        <div class="glass p-6 text-center anim-up anim-d3"><div class="text-4xl mb-3"><i class="fas fa-tags"></i></div><h3 class="font-bold text-lg mb-2" style="color:var(--pri-d)">أفضل الأسعار</h3><p class="text-sm text-slate-500">عروض وتخفيضات مستمرة</p></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SHOP / OFFERS / CART / CONTACT / ORDER SUCCESS / MY ORDERS -->
+  <div id="page-shop" class="page hidden" style="padding-top:80px">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <h2 class="text-2xl font-black mb-6" style="color:var(--pri-d)">🛒 جميع المنتجات</h2>
+      <!-- أزرار التصنيف -->
+      <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <button onclick="app.filterShop('all')" class="px-4 py-2 rounded-full glass text-sm font-semibold whitespace-nowrap filter-btn active" data-cat="all">الكل</button>
+        <button onclick="app.filterShop('جوالات')" class="px-4 py-2 rounded-full glass text-sm font-semibold whitespace-nowrap filter-btn" data-cat="جوالات">جوالات</button>
+        <button onclick="app.filterShop('اكسسوارات')" class="px-4 py-2 rounded-full glass text-sm font-semibold whitespace-nowrap filter-btn" data-cat="اكسسوارات">اكسسوارات</button>
+        <button onclick="app.filterShop('صيانة')" class="px-4 py-2 rounded-full glass text-sm font-semibold whitespace-nowrap filter-btn" data-cat="صيانة">صيانة</button>
+      </div>
+      <!-- شبكة المنتجات -->
+      <div id="shopGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    </div>
+  </div>
+
+  <div id="page-offers" class="page hidden" style="padding-top:80px">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <h2 class="text-2xl font-black mb-6" style="color:var(--pri-d)">🏷️ العروض والتخفيضات</h2>
+      <div id="offersGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    </div>
+  </div>
+  
+  <!-- CART -->
+  <div id="page-cart" class="page hidden" style="padding-top:80px">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+      <h2 class="text-2xl font-black mb-6" style="color:var(--pri-d)"><i class="fas fa-shopping-bag me-2"></i>سلة المشتريات</h2>
+      <div id="cartEmpty" class="glass p-12 text-center hidden"><div class="text-6xl mb-4"><i class="fas fa-shopping-cart"></i></div><p class="text-lg text-slate-500 mb-4">السلة فارغة</p><button onclick="app.navigateTo('shop')" class="btn-pri">تصفح المنتجات</button></div>
+      <div id="cartContent" class="hidden">
+        <div id="cartItemsTable" class="mb-6"></div>
+        <div id="cartSummary" class="glass p-4 mb-6"></div>
+        <div class="glass p-6 mb-6">
+          <h3 class="font-bold text-lg mb-4" style="color:var(--pri-d)"><i class="fas fa-truck me-2"></i>بيانات التوصيل</h3>
+          <div class="grid gap-4">
+            <div><label class="block text-sm font-semibold mb-1 text-slate-600">الاسم الكامل</label><input id="delName" type="text" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="أدخل اسمك"></div>
+            <div><label class="block text-sm font-semibold mb-1 text-slate-600">رقم الجوال</label><input id="delPhone" type="tel" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="7XXXXXXXX"></div>
+            <div><label class="block text-sm font-semibold mb-1 text-slate-600">العنوان التفصيلي</label><textarea id="delAddress" rows="2" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="المنطقة - الحي - أقرب معلم"></textarea></div>
+            <div><label class="block text-sm font-semibold mb-1 text-slate-600"><i class="fas fa-map-marker-alt me-1"></i>تحديد الموقع على الخريطة</label><button onclick="app.openMapPicker()" class="btn-pri w-full flex items-center justify-center gap-2"><i class="fas fa-map-pin"></i> اختر موقعك من الخريطة</button><p id="locationStatus" class="text-xs text-slate-400 mt-2"></p></div>
+          </div>
+        </div>
+        <div class="glass p-6 mb-6">
+          <h3 class="font-bold text-lg mb-4" style="color:var(--pri-d)"><i class="fas fa-credit-card me-2"></i>طريقة الدفع</h3>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-teal-50/50 transition">
+              <input type="radio" name="paymentMethod" value="bank" checked onchange="app.togglePaymentMethod('bank')" class="w-5 h-5 accent-teal-600"> <span class="font-medium">تحويل / إيداع بنكي</span>
+            </label>
+            <div id="bankSelection" class="ml-8 mt-2">
+              <label class="block text-sm font-semibold mb-1">اختر الحساب البنكي</label>
+              <select id="bankSelect" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400"></select>
+              <div id="selectedBankDetails" class="mt-3 p-3 bg-teal-50/50 rounded-xl text-sm"></div>
+            </div>
+            <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-teal-50/50 transition" id="codLabel">
+              <input type="radio" name="paymentMethod" value="cod" onchange="app.togglePaymentMethod('cod')" class="w-5 h-5 accent-teal-600"> <span class="font-medium">الدفع عند الاستلام</span>
+            </label>
+            <p id="codWarning" class="text-xs text-orange-500 hidden mr-8">بعض المنتجات لا تدعم الدفع عند الاستلام</p>
+            <!-- طرق الدفع الإضافية -->
+            <div id="extraPaymentMethods"></div>
+          </div>
+        </div>
+        <button onclick="app.placeOrder()" class="btn-pri w-full text-lg py-4"><i class="fas fa-check-circle me-2"></i>إتمام الطلب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div id="page-contact" class="page hidden" style="padding-top:80px">
+    <div class="max-w-3xl mx-auto px-4 py-8"><h2 class="text-2xl font-black mb-6" style="color:var(--pri-d)"><i class="fas fa-phone-alt me-2"></i>اتصل بنا</h2><div class="glass p-8 space-y-6"><div class="flex items-start gap-4"><div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,var(--pri),var(--pri-d))"><i class="fas fa-map-marker-alt" style="color:#fff;font-size:20px"></i></div><div><h3 class="font-bold mb-1">العنوان</h3><p class="text-sm text-slate-500">تعز - بيرباشا - مقابل سوق عبده سيف - جوار عالم الصرافة</p></div></div><div class="flex items-start gap-4"><div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,var(--pri),var(--pri-d))"><i class="fas fa-phone" style="color:#fff;font-size:20px"></i></div><div><h3 class="font-bold mb-1">أرقام التواصل</h3><div class="space-y-1"><a href="tel:+967777229775" class="block text-sm hover:underline" style="color:var(--pri)">777229775</a><a href="tel:+967776363963" class="block text-sm hover:underline" style="color:var(--pri)">776363963</a><a href="tel:+967735353393" class="block text-sm hover:underline" style="color:var(--pri)">735353393</a></div></div></div></div></div>
+  </div>
+
+  <!-- ORDER SUCCESS -->
+  <div id="page-order-success" class="page hidden" style="padding-top:80px"><div class="max-w-lg mx-auto px-4 py-16 text-center"><div class="glass p-10"><div class="text-7xl mb-6"><i class="fas fa-check-circle" style="color:var(--pri)"></i></div><h2 class="text-2xl font-black mb-3" style="color:var(--pri-d)">تم إرسال طلبك بنجاح!</h2><p class="text-slate-500 mb-2">حالة الطلب: <span class="font-bold text-orange-500">قيد انتظار تأكيد الدفع</span></p><p class="text-sm text-slate-400 mb-6">سيتم التواصل معك لتأكيد الطلب والتوصيل</p><button onclick="app.navigateTo('home')" class="btn-pri">العودة للرئيسية</button></div></div></div>
+
+  <!-- MY ORDERS (صفحة طلباتي) -->
+  <div id="page-my-orders" class="page hidden" style="padding-top:80px">
+    <div class="max-w-5xl mx-auto px-4 py-8">
+      <h2 class="text-2xl font-black mb-6" style="color:var(--pri-d)"><i class="fas fa-clipboard-list me-2"></i>طلباتي</h2>
+      <div id="myOrdersList" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- صفحة تفاصيل المنتج (جديدة - مستقلة) -->
+  <div id="page-product-detail" class="page hidden" style="padding-top:80px">
+    <div class="max-w-5xl mx-auto px-4 py-8">
+      <button onclick="app.goBack()" class="mb-4 flex items-center gap-2 text-teal-700 font-bold hover:underline"><i class="fas fa-arrow-right"></i> رجوع</button>
+      <div id="productDetailContainer" class="glass-heavy p-6 rounded-3xl"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD (مسار /dashboard) -->
+  <div id="page-dashboard" class="page hidden" style="padding-top:0">
+    <div class="flex flex-col h-full">
+      <header class="bg-gray-900 text-white p-3 flex items-center justify-between shadow-lg">
+        <div class="flex items-center gap-3">
+          <img src="https://i.ibb.co/XZxvN2gR/IMG-edit-1123054760450025.png" alt="شعار مركز الأحمدي" class="w-8 h-8 rounded-lg object-contain">
+          <span class="font-bold text-lg">لوحة تحكم الأحمدي</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <span id="adminUserName" class="text-sm"></span>
+          <button onclick="app.adminSignOut()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-sm"><i class="fas fa-sign-out-alt me-1"></i>تسجيل الخروج</button>
+        </div>
+      </header>
+      <div class="flex flex-1 overflow-hidden">
+        <aside class="admin-sidebar hidden md:block flex-shrink-0 overflow-auto">
+          <div class="px-5 py-4 mb-4"><span class="text-white font-bold text-lg"><i class="fas fa-cogs me-2"></i>لوحة التحكم</span></div>
+          <a class="active" onclick="app.switchAdminTab('products')"><i class="fas fa-box"></i>المنتجات</a>
+          <a onclick="app.switchAdminTab('orders')"><i class="fas fa-clipboard-list"></i>الطلبات</a>
+          <a onclick="app.switchAdminTab('reviews')"><i class="fas fa-star"></i>آراء العملاء</a>
+          <a onclick="app.switchAdminTab('settings')"><i class="fas fa-sliders-h"></i>الإعدادات</a>
+          <a onclick="app.navigateTo('home')" style="margin-top:auto"><i class="fas fa-home"></i>الموقع</a>
+        </aside>
+        <div class="flex-1 p-4 sm:p-6 overflow-auto" style="background:#0f172a;min-height:100%">
+          <div class="md:hidden flex gap-2 mb-4 overflow-x-auto">
+            <button class="tab-btn active" onclick="app.switchAdminTab('products')" style="color:#94a3b8">المنتجات</button>
+            <button class="tab-btn" onclick="app.switchAdminTab('orders')" style="color:#94a3b8">الطلبات</button>
+            <button class="tab-btn" onclick="app.switchAdminTab('reviews')" style="color:#94a3b8">الآراء</button>
+            <button class="tab-btn" onclick="app.switchAdminTab('settings')" style="color:#94a3b8">الإعدادات</button>
+          </div>
+          <div id="admin-products" class="admin-tab">
+            <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <h2 class="text-xl font-bold text-white"><i class="fas fa-boxes me-2"></i>إدارة المنتجات</h2>
+              <button onclick="app.openProductForm()" class="btn-pri text-sm"><i class="fas fa-plus me-1"></i>إضافة منتج</button>
+            </div>
+            <div class="glass-dark overflow-x-auto">
+              <table class="w-full text-sm text-white">
+                <thead><tr class="border-b border-slate-700"><th class="p-3 text-right">الصورة</th><th class="p-3 text-right">الاسم</th><th class="p-3 text-right">العملة</th><th class="p-3 text-right">السعر</th><th class="p-3 text-right">أصلي</th><th class="p-3 text-right">خصم%</th><th class="p-3 text-right">المخزون</th><th class="p-3 text-right">الحالة</th><th class="p-3 text-right">إجراءات</th></tr></thead>
+                <tbody id="adminProductTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="admin-orders" class="admin-tab hidden">
+            <h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-truck me-2"></i>إدارة الطلبات</h2>
+            <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+              <button onclick="app.filterOrdersByStatus('all')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn active" data-status="all">الكل</button>
+              <button onclick="app.filterOrdersByStatus('pending')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn" data-status="pending">قيد الانتظار</button>
+              <button onclick="app.filterOrdersByStatus('confirmed')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn" data-status="confirmed">تم التأكيد</button>
+              <button onclick="app.filterOrdersByStatus('out_for_delivery')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn" data-status="out_for_delivery">جاري التوصيل</button>
+              <button onclick="app.filterOrdersByStatus('delivered')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn" data-status="delivered">تم التسليم</button>
+              <button onclick="app.filterOrdersByStatus('cancelled')" class="px-4 py-1.5 rounded-full glass text-sm font-semibold status-filter-btn" data-status="cancelled">ملغي</button>
+            </div>
+            <!-- عرض الطلبات كبطاقات (جديد) -->
+            <div id="adminOrdersCards" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+          </div>
+          <div id="admin-reviews" class="admin-tab hidden">
+            <h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-star me-2"></i>إدارة آراء العملاء</h2>
+            <div class="glass-dark overflow-x-auto">
+              <table class="w-full text-sm text-white">
+                <thead><tr class="border-b border-slate-700"><th class="p-2">العميل</th><th class="p-2">المنتج</th><th class="p-2">التقييم</th><th class="p-2">النص</th><th class="p-2">الحالة</th><th class="p-2">التاريخ</th><th class="p-2">إجراءات</th></tr></thead>
+                <tbody id="adminReviewsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="admin-settings" class="admin-tab hidden">
+            <h2 class="text-xl font-bold text-white mb-6"><i class="fas fa-cog me-2"></i>إعدادات المتجر</h2>
+            <div class="glass-dark p-6 space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-white">الحسابات البنكية</h3><button onclick="app.openBankAccountForm()" class="text-sm bg-teal-600 hover:bg-teal-700 px-3 py-1.5 rounded-lg"><i class="fas fa-plus me-1"></i>إضافة حساب</button></div>
+                <div id="bankAccountsList" class="space-y-2"></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-white">طرق الدفع الإضافية</h3><button onclick="app.openExtraPaymentForm()" class="text-sm bg-teal-600 hover:bg-teal-700 px-3 py-1.5 rounded-lg"><i class="fas fa-plus me-1"></i>إضافة طريقة</button></div>
+                <div id="extraPaymentMethodsList" class="space-y-2"></div>
+              </div>
+              <div><label class="block text-sm font-semibold text-slate-300 mb-2">رسالة الدفع عند الاستلام</label><textarea id="codMessageInput" rows="2" class="w-full p-3 rounded-xl bg-slate-800 text-white border border-slate-600" placeholder="رسالة مخصصة تظهر للعميل عند اختيار الدفع عند الاستلام"></textarea></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label class="block text-sm font-semibold text-slate-300 mb-2">اسم مندوب التوصيل الافتراضي</label><input id="deliveryNameInput" type="text" class="w-full p-3 rounded-xl bg-slate-800 text-white border border-slate-600" placeholder="مثال: محمد الأحمدي"></div>
+                <div><label class="block text-sm font-semibold text-slate-300 mb-2">رقم جوال مندوب التوصيل</label><input id="deliveryPhoneInput" type="tel" class="w-full p-3 rounded-xl bg-slate-800 text-white border border-slate-600" placeholder="777xxxxxx"></div>
+              </div>
+              <button onclick="app.saveSettings()" class="btn-pri mt-4"><i class="fas fa-save me-2"></i>حفظ جميع الإعدادات</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال المصادقة للعملاء -->
+  <div id="clientAuthModal" class="overlay">
+    <div class="glass-heavy p-8 w-11/12 max-w-md rounded-3xl">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="font-bold text-xl" style="color:var(--pri-d)">تسجيل الدخول / حساب جديد</h3>
+        <button onclick="app.closeClientAuthModal()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="authForm">
+        <div class="mb-4"><label class="block text-sm font-semibold mb-1 text-slate-600">البريد الإلكتروني</label><input id="authEmail" type="email" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="example@email.com"></div>
+        <div class="mb-4 password-wrapper"><label class="block text-sm font-semibold mb-1 text-slate-600">كلمة المرور</label><input id="authPassword" type="password" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="********"><i class="toggle-password fas fa-eye" onclick="app.togglePasswordVisibility('authPassword',this)"></i></div>
+        <div id="extraFields" class="hidden">
+          <div class="mb-4"><label class="block text-sm font-semibold mb-1 text-slate-600">الاسم الكامل</label><input id="authFullName" type="text" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="أدخل اسمك الكامل"></div>
+          <div class="mb-4"><label class="block text-sm font-semibold mb-1 text-slate-600">رقم الجوال</label><input id="authPhone" type="tel" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="7XXXXXXXX"></div>
+          <div class="mb-4"><label class="block text-sm font-semibold mb-1 text-slate-600">العنوان الافتراضي</label><input id="authAddress" type="text" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="المدينة - الحي - الشارع"></div>
+        </div>
+        <p id="authError" class="text-red-500 text-sm mb-3 hidden"></p>
+        <div class="flex gap-3">
+          <button onclick="app.signIn()" class="btn-pri flex-1">دخول</button>
+          <button onclick="app.toggleSignUpMode()" id="signUpToggleBtn" class="flex-1 p-3 rounded-xl border border-teal-600 text-teal-700 font-bold hover:bg-teal-50 transition">إنشاء حساب</button>
+        </div>
+        <button id="signUpSubmitBtn" onclick="app.signUp()" class="btn-pri w-full mt-3 hidden">إنشاء حساب جديد</button>
+        <button onclick="app.closeClientAuthModal()" class="mt-3 text-sm text-slate-500 hover:underline w-full">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال المصادقة للمسؤول -->
+  <div id="adminAuthModal" class="overlay">
+    <div class="glass-heavy p-8 w-11/12 max-w-sm text-center rounded-3xl">
+      <div class="text-5xl mb-4"><i class="fas fa-lock"></i></div>
+      <h3 class="font-bold text-xl mb-4" style="color:var(--pri-d)">دخول لوحة التحكم</h3>
+      <input id="adminAuthEmail" type="email" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none mb-3" placeholder="البريد الإلكتروني">
+      <div class="password-wrapper mb-3">
+        <input id="adminAuthPass" type="password" class="w-full p-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:outline-none" placeholder="كلمة المرور">
+        <i class="toggle-password fas fa-eye" onclick="app.togglePasswordVisibility('adminAuthPass',this)"></i>
+      </div>
+      <p id="adminAuthErr" class="text-red-500 text-sm mb-3 hidden">بيانات الدخول غير صحيحة أو ليس لديك صلاحية</p>
+      <button onclick="app.authenticateAdmin()" class="btn-pri w-full">دخول</button>
+      <button onclick="app.closeAdminAuthModal()" class="mt-3 text-sm text-slate-500 hover:underline">إلغاء</button>
+    </div>
+  </div>
+
+  <!-- Map Overlay & Product Form & Delete Confirm & Bank Account Form & Review Form & Extra Payment Form -->
+  <div id="mapOverlay" class="overlay">
+    <div class="glass p-4 w-11/12 max-w-lg" style="max-height:85%">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold" style="color:var(--pri-d)"><i class="fas fa-map-marker-alt me-2"></i>حدد موقعك</h3>
+        <button onclick="app.closeMapPicker()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="mapContainer" style="height:300px;border-radius:12px; position: relative;"></div>
+      <div id="mapPreviewArea" class="map-preview text-slate-600"></div>
+      <p class="text-xs text-slate-400 mt-2 text-center">اضغط على الخريطة لتحديد موقعك، أو استخدم زر تحديد الموقع الحالي</p>
+      <button onclick="app.confirmLocation()" class="btn-pri w-full mt-3">تأكيد الموقع</button>
+    </div>
+  </div>
+  
+  <div id="productFormOverlay" class="overlay"><div class="glass p-6 w-11/12 max-w-2xl overflow-auto" style="max-height:85%"><div class="flex items-center justify-between mb-4"><h3 id="productFormTitle" class="font-bold text-lg" style="color:var(--pri-d)">إضافة منتج</h3><button onclick="app.closeProductForm()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button></div><div id="productFormContent"></div></div></div>
+  
+  <div id="deleteOverlay" class="overlay"><div class="glass p-6 w-11/12 max-w-sm text-center"><div class="text-5xl mb-4"><i class="fas fa-exclamation-triangle text-yellow-500"></i></div><p class="font-bold text-lg mb-2">تأكيد الحذف</p><p id="deleteMsg" class="text-sm text-slate-500 mb-6"></p><div class="flex gap-3"><button onclick="app.confirmDelete()" class="btn-pri flex-1" style="background:linear-gradient(135deg,#ef4444,#dc2626)">حذف</button><button onclick="app.cancelDelete()" class="flex-1 p-2.5 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-50 transition">إلغاء</button></div></div></div>
+
+  <div id="bankAccountFormOverlay" class="overlay"><div class="glass p-6 w-11/12 max-w-md"><div class="flex items-center justify-between mb-4"><h3 id="bankFormTitle" class="font-bold text-lg" style="color:var(--pri-d)">إضافة حساب بنكي</h3><button onclick="app.closeBankAccountForm()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button></div><div id="bankAccountFormContent"></div></div></div>
+
+  <div id="reviewFormOverlay" class="overlay"><div class="glass p-6 w-11/12 max-w-lg overflow-auto" style="max-height:85%"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-lg" style="color:var(--pri-d)">تقييم المنتجات</h3><button onclick="app.closeReviewForm()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button></div><div id="reviewFormContent"></div></div></div>
+
+  <div id="extraPaymentFormOverlay" class="overlay"><div class="glass p-6 w-11/12 max-w-md"><div class="flex items-center justify-between mb-4"><h3 id="extraFormTitle" class="font-bold text-lg" style="color:var(--pri-d)">إضافة طريقة دفع</h3><button onclick="app.closeExtraPaymentForm()" class="p-1 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button></div><div id="extraPaymentFormContent"></div></div></div>
+
+  <!-- FOOTER -->
+  <footer id="mainFooter" class="w-full py-8 px-4 text-center" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;margin-top:auto">
+    <div class="max-w-4xl mx-auto">
+      <img src="https://i.ibb.co/XZxvN2gR/IMG-edit-1123054760450025.png" alt="شعار مركز الأحمدي" class="w-12 h-12 mx-auto mb-3 rounded-xl object-contain">
+      <p class="font-bold text-white mb-3">مركز الأحمدي للجوالات ومستلزماتها</p>
+      <p class="text-sm mb-3">تعز - بيرباشا - مقابل سوق عبده سيف - جوار عالم الصرافة</p>
+      <div class="flex justify-center gap-4 mb-3"><a href="tel:+967777229775" class="text-sm hover:text-teal-400 transition"><i class="fas fa-phone me-1"></i>777229775</a><a href="tel:+967776363963" class="text-sm hover:text-teal-400 transition"><i class="fas fa-phone me-1"></i>776363963</a><a href="tel:+967735353393" class="text-sm hover:text-teal-400 transition"><i class="fas fa-phone me-1"></i>735353393</a></div>
+      <p class="text-xs text-slate-500">© 2024 جميع الحقوق محفوظة</p>
+    </div>
+  </footer>
+</div>
+
+<!-- ملفات JavaScript -->
+<script src="js/firebase.js"></script>
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/orders.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
