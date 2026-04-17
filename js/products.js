@@ -58,7 +58,7 @@ function renderShop() {
     : window.appState.products.filter(p => p.category === window.appState.shopCategory);
   const grid = document.getElementById('shopGrid');
   if (grid) {
-    grid.innerHTML = filtered.map(createProductCard).join('');
+    grid.innerHTML = filtered.length ? filtered.map(createProductCard).join('') : '<p class="text-slate-400 col-span-full text-center py-8">لا توجد منتجات</p>';
   }
 }
 
@@ -74,7 +74,6 @@ function renderOffers() {
 function liveSearch(query) {
   const term = query.trim().toLowerCase();
   if (term === '') {
-    // إعادة عرض كل المنتجات حسب التصنيف الحالي
     renderShop();
     return;
   }
@@ -104,7 +103,7 @@ function updateUIAfterProducts() {
   }
 }
 
-// دوال تفاصيل المنتج (ستُستخدم في main.js)
+// دوال تفاصيل المنتج
 function openProductDetail(productId) {
   window.appState.previousPage = window.appState.currentPage;
   const p = window.appState.products.find(x => x.id === productId);
@@ -194,7 +193,7 @@ function addToCartFromDetail(pid) {
   }
   updateCartBadge();
   showToast('تمت الإضافة ✅');
-  app.goBack(); // العودة للصفحة السابقة
+  app.goBack();
 }
 
 function buyNow(pid) {
