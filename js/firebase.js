@@ -17,8 +17,7 @@ const database = firebase.database();
 const RATES = { YER: 1, SAR: 140, USD: 530 };
 const CUR_SYMBOLS = { YER: 'ر.ي', SAR: 'ر.س', USD: '$' };
 
-// سيتم تعريف state في main.js لكننا نعرّفها هنا للاستخدام في الملفات الأخرى
-// نستخدم كائن window.appState لتخزين الحالة المشتركة
+// كائن الحالة المشتركة
 window.appState = {
   currentPage: 'home',
   cart: [],
@@ -39,7 +38,9 @@ window.appState = {
   products: [],
   orders: [],
   reviews: [],
-  previousPage: null // لتتبع الصفحة السابقة للرجوع
+  previousPage: null,
+  authReady: false,        // للإشارة إلى اكتمال تحميل حالة المصادقة
+  productsReady: false     // للإشارة إلى اكتمال تحميل المنتجات
 };
 
 // مراجع Firebase
@@ -81,7 +82,7 @@ function getDefaultProducts() {
   ];
 }
 
-// تحميل البيانات الأولية من localStorage
+// تحميل البيانات الأولية من localStorage (تتم قبل اتصال Firebase)
 function initialLoadFromLocal() {
   window.appState.products = loadData('ahmadi_products', getDefaultProducts());
   window.appState.orders = loadData('ahmadi_orders', []);
@@ -100,10 +101,14 @@ function setupDataListeners() {
       window.appState.products = data;
       localStorage.setItem('ahmadi_products', JSON.stringify(data));
     } else {
+      // إذا لم تكن هناك بيانات في Firebase، نستخدم البيانات المحلية ونرفعها
       window.appState.products = getDefaultProducts();
       localStorage.setItem('ahmadi_products', JSON.stringify(window.appState.products));
-      if (window.appState.currentUser && window.appState.isAdminUser) productsRef.set(window.appState.products);
+      if (window.appState.currentUser && window.appState.isAdminUser) {
+        productsRef.set(window.appState.products);
+      }
     }
+    window.appState.productsReady = true;
     if (typeof updateUIAfterProducts === 'function') updateUIAfterProducts();
   });
 
@@ -182,6 +187,7 @@ function sanitizeNumber(value, defaultValue = 0) {
 auth.onAuthStateChanged(async (user) => {
   window.appState.currentUser = user;
   if (user) {
+    // جلب صلاحية المسؤول من Realtime Database
     const snapshot = await database.ref(`users/${user.uid}/isAdmin`).once('value');
     window.appState.isAdminUser = snapshot.val() === true;
     if (window.appState.currentPage === 'dashboard') {
@@ -190,8 +196,15 @@ auth.onAuthStateChanged(async (user) => {
   } else {
     window.appState.isAdminUser = false;
   }
+  window.appState.authReady = true;
   updateAuthUI();
   updateAdminLinks();
+  
+  // بعد تحميل حالة المستخدم، نتحقق من التوجيه الحالي إذا كان للوحة التحكم
+  if (window.appState.currentPage === 'dashboard' && !window.appState.isAdminUser) {
+    showToast('يجب تسجيل الدخول كمسؤول للوصول إلى لوحة التحكم');
+    app.navigateTo('home');
+  }
 });
 
 function updateAuthUI() {
@@ -220,6 +233,4 @@ function updateAdminLinks() {
   } else {
     adminLinks.forEach(link => link.classList.add('hidden'));
   }
-}
-
-// دوال المصادقة الأساسية (ستُضاف إلى كائن app في main.js)
+} 
