@@ -1,6 +1,5 @@
 // ======================== الملف الرئيسي - تنسيق التنقل وبدء التطبيق ========================
 
-// تعريف كائن app ليكون متاحاً عالمياً
 window.app = {};
 
 // دوال المصادقة
@@ -88,6 +87,7 @@ app.signOut = async function() {
   try {
     await auth.signOut();
     showToast('تم تسجيل الخروج');
+    app.navigateTo('home');
   } catch (error) {
     showToast('حدث خطأ: ' + error.message);
   }
@@ -138,7 +138,6 @@ app.authenticateAdmin = async function() {
 
 app.adminSignOut = function() {
   app.signOut();
-  app.navigateTo('home');
 };
 
 app.toggleUserDropdown = function() {
@@ -155,7 +154,13 @@ app.toggleMobileMenu = function() {
 
 // التنقل
 app.navigateTo = function(page) {
-  // حفظ الصفحة السابقة للرجوع
+  // إذا لم تكن بيانات المصادقة جاهزة بعد، انتظر قليلاً
+  if (!window.appState.authReady && page === 'dashboard') {
+    setTimeout(() => app.navigateTo(page), 100);
+    return;
+  }
+  
+  // حفظ الصفحة السابقة
   if (page !== 'product-detail' && window.appState.currentPage !== 'product-detail') {
     window.appState.previousPage = window.appState.currentPage;
   }
@@ -165,22 +170,18 @@ app.navigateTo = function(page) {
   if (el) el.classList.remove('hidden');
   window.appState.currentPage = page;
   
-  // إظهار/إخفاء الهيدر والفوتر
   const isAdmin = page === 'dashboard';
   document.getElementById('mainHeader').style.display = isAdmin ? 'none' : '';
   document.getElementById('mainFooter').style.display = isAdmin ? 'none' : '';
   
-  // تحديث الروابط النشطة
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.remove('active');
     if (link.dataset.page === page) link.classList.add('active');
   });
   
-  // تحديث hash
   if (page === 'home') window.location.hash = '/';
   else window.location.hash = '/' + page;
   
-  // تحميل المحتوى
   if (page === 'dashboard') {
     if (!window.appState.currentUser || !window.appState.isAdminUser) {
       showToast('يجب تسجيل الدخول كمسؤول للوصول إلى لوحة التحكم');
@@ -196,16 +197,21 @@ app.navigateTo = function(page) {
     return;
   }
   
-  if (page === 'home') { renderFeatured(); initHeroSlider(); renderReviewsSlider(); }
-  if (page === 'shop') renderShop();
-  if (page === 'offers') renderOffers();
+  if (page === 'home') { 
+    if (window.appState.productsReady) {
+      renderFeatured(); 
+      initHeroSlider(); 
+      renderReviewsSlider(); 
+    } else {
+      // عرض مؤشر تحميل
+    }
+  }
+  if (page === 'shop' && window.appState.productsReady) renderShop();
+  if (page === 'offers' && window.appState.productsReady) renderOffers();
   if (page === 'cart') renderCart();
   if (page === 'my-orders') renderMyOrders();
-  if (page === 'product-detail') {
-    // تم ملء التفاصيل مسبقاً
-  }
   
-  app.toggleMobileMenu(); // إغلاق القائمة الجوال
+  app.toggleMobileMenu();
 };
 
 app.goBack = function() {
@@ -216,7 +222,6 @@ app.goBack = function() {
   }
 };
 
-// دوال إضافية
 app.togglePasswordVisibility = function(inputId, icon) {
   const input = document.getElementById(inputId);
   if (input.type === 'password') {
@@ -230,7 +235,7 @@ app.togglePasswordVisibility = function(inputId, icon) {
   }
 };
 
-// ربط دوال المنتجات والسلة والإدارة
+// ربط الدوال
 app.addToCart = addToCart;
 app.filterShop = filterShop;
 app.openProductDetail = openProductDetail;
@@ -327,7 +332,6 @@ function initHeroSlider() {
   resetInterval();
 }
 
-// دوال التقييم (نقلنا بعضها من orders.js)
 function openReviewForm(orderId) {
   const order = window.appState.orders.find(o => o.id === orderId);
   if (!order) return;
@@ -412,12 +416,12 @@ app.submitReviews = async function() {
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const mobileSearchInput = document.getElementById('mobileSearchInput');
+  
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       if (window.appState.currentPage === 'shop') {
         liveSearch(e.target.value);
       } else {
-        // إذا لم نكن في صفحة المتجر، ننتقل إليها مع البحث
         app.navigateTo('shop');
         setTimeout(() => liveSearch(e.target.value), 50);
       }
@@ -434,23 +438,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // معالجة تغيير hash
-  window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.slice(1); // إزالة #
-    if (hash === '' || hash === '/') app.navigateTo('home');
-    else if (hash === '/dashboard') app.navigateTo('dashboard');
-    else if (hash.startsWith('/')) app.navigateTo(hash.slice(1));
-  });
-  
   // تحميل أولي
   initialLoadFromLocal();
   setupDataListeners();
   updateCartBadge();
   
-  // تحديد الصفحة الأولية
-  const hash = window.location.hash.slice(1);
-  if (hash === '' || hash === '/') app.navigateTo('home');
-  else if (hash === '/dashboard') app.navigateTo('dashboard');
-  else if (hash.startsWith('/')) app.navigateTo(hash.slice(1));
-  else app.navigateTo('home');
+  // انتظار تحميل بيانات المصادقة ثم توجيه الصفحة
+  const waitForAuthAndRoute = () => {
+    if (window.appState.authReady) {
+      const hash = window.location.hash.slice(1);
+      if (hash === '' || hash === '/') app.navigateTo('home');
+      else if (hash === '/dashboard') app.navigateTo('dashboard');
+      else if (hash.startsWith('/')) app.navigateTo(hash.slice(1));
+      else app.navigateTo('home');
+    } else {
+      setTimeout(waitForAuthAndRoute, 50);
+    }
+  };
+  waitForAuthAndRoute();
+  
+  window.addEventListener('hashchange', () => {
+    if (!window.appState.authReady) return;
+    const hash = window.location.hash.slice(1);
+    if (hash === '' || hash === '/') app.navigateTo('home');
+    else if (hash === '/dashboard') app.navigateTo('dashboard');
+    else if (hash.startsWith('/')) app.navigateTo(hash.slice(1));
+  });
 });
